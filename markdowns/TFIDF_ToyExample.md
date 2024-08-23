@@ -1,25 +1,13 @@
----
-title: "TF-IDF ToyExample"
-author: "Kyrillos Ishak"
-date: "`r Sys.Date()`"
-output: 
-  html_notebook:
-    pandoc_args: [
-      "--number-offset=1,0"
-      ]
-    fig_caption: true
-    number_sections: yes
-    toc: yes
-    toc_depth: 3
----
-
 ::: {.cell .markdown}
 
 # Toy Example
 :::
 
 ::: {.cell .markdown}
-## **1. Introduction**
+## Introduction
+:::
+
+::: {.cell .markdown}
 
 In machine learning, ensuring that models generalize well to unseen data is paramount. However, a subtle yet pervasive issue known as data leakage can severely compromise this goal. Data leakage occurs when information from outside the training dataset slips into the model, artificially boosting performance during evaluation. This can lead to overly optimistic results that fail in real-world scenarios. Among the various forms of data leakage, feature selection is particularly insidious, as it can occur at multiple stages of the machine learning pipeline and often goes unnoticed.
 
@@ -46,9 +34,18 @@ In machine learning, ensuring that models generalize well to unseen data is para
 
 ::: {.cell .markdown}
 
-## **2. Feature extraction using TF-IDF vectorizer**
+## Feature extraction using TF-IDF vectorizer
+
+:::
+
+::: {.cell .markdown}
 
 ### What is TF-IDF?
+
+:::
+
+::: {.cell .markdown}
+
 TF-IDF stands for **Term Frequency-Inverse Document Frequency**. It is a numerical statistic that is intended to reflect how important a word is to a document in a collection or corpus. The TF-IDF score is composed of two parts:
 
 * Term Frequency (TF): This measures how frequently a term appears in a document. The term frequency of a term `t` in a document `d` is given by:
@@ -69,13 +66,29 @@ TF-IDF stands for **Term Frequency-Inverse Document Frequency**. It is a numeric
 
 *Consider `D` is total dataset (e.g. X) and `d` is an entry in the dataset (e.g. X[0])*
 
+:::
+
+::: {.cell .markdown}
+
 ### What can cause Data Leakage?
+
+:::
+
+::: {.cell .markdown}
 
 Data leakage refers to the situation where information from outside the training dataset is used to create the model. This leads to overly optimistic performance estimates and poor generalization to new data.
 
 This can happen when TF-IDF is computed on the entire dataset before splitting it into training and testing sets
 
+:::
+
+::: {.cell .markdown}
+
 ### Why that caused Data Leakage?
+
+:::
+
+::: {.cell .markdown}
 
 * The IDF part of TF-IDF takes into account the frequency of terms across all documents in the dataset. If you compute IDF using the entire dataset, the resulting IDF values will be influenced by the documents that end up in the test set. This means that information from the test set leaks into the training process, giving the model a peek into the test data distribution. The model might perform well in cross-validation or on the training set but fail to generalize to truly unseen data.
 

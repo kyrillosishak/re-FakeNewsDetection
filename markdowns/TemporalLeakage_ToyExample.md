@@ -1,19 +1,5 @@
----
-title: "Random Feature selection for Temporal data ToyExample"
-author: "Kyrillos Ishak"
-date: "`r Sys.Date()`"
-output: 
-  html_notebook:
-    pandoc_args: [
-      "--number-offset=1,0"
-      ]
-    fig_caption: true
-    number_sections: yes
-    toc: yes
-    toc_depth: 3
----
 :::{.cell .markdown}
-# **Temporal Leakage**
+# Temporal Leakage
 :::
 :::{.cell .markdown}
 

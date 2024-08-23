@@ -1,26 +1,22 @@
----
-title: "Illegitimate Features ToyExample"
-author: "Kyrillos Ishak"
-date: "`r Sys.Date()`"
-output: 
-  html_notebook:
-    pandoc_args: [
-      "--number-offset=1,0"
-      ]
-    fig_caption: true
-    number_sections: yes
-    toc: yes
-    toc_depth: 3
----
+:::{.cell .markdown}
+
+## Using a feature that is a proxy for target variable, that will not be available at inference time
+
+:::
 
 :::{.cell .markdown}
 
-## **Using a feature that is a proxy for target variable, that will not be available at inference time**
-
 One specific form of data leakage involves selecting features that directly influence the target variable, thereby giving the model access to information it would not have in a real-world scenario. For example, if a feature is chosen based on its direct correlation with the target variable—perhaps through data that includes future outcomes or results—this feature will unfairly boost the model’s accuracy during training. When the model is evaluated on unseen data, it may not perform as well because it has been trained with features that directly reveal the target variable. This scenario creates an unrealistic impression of the model's capabilities and can lead to misleading conclusions about its effectiveness, ultimately compromising its reliability and generalization to new, real-world data.
 
+:::
+
+:::{.cell .markdown}
 
 ### Consider this example:
+
+:::
+
+:::{.cell .markdown}
 
 <img src="https://github.com/kyrillosishak/re-FakeNewsDetection/raw/main/Assets/features.png" height=130>
 
