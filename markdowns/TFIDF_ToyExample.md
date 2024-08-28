@@ -84,7 +84,7 @@ This can happen when TF-IDF is computed on the entire dataset before splitting i
 
 ::: {.cell .markdown}
 
-### Why that caused Data Leakage?
+### Why Does This Cause Data Leakage?
 
 :::
 
@@ -92,237 +92,354 @@ This can happen when TF-IDF is computed on the entire dataset before splitting i
 
 * The IDF part of TF-IDF takes into account the frequency of terms across all documents in the dataset. If you compute IDF using the entire dataset, the resulting IDF values will be influenced by the documents that end up in the test set. This means that information from the test set leaks into the training process, giving the model a peek into the test data distribution. The model might perform well in cross-validation or on the training set but fail to generalize to truly unseen data.
 
+
 * When you split the dataset after computing TF-IDF, both the training and test sets will share the same IDF values, which are based on the entire dataset. However, in a real-world scenario, the test data is unknown during the training phase, and its distribution might be different from the training data. By using IDF values that include test data, you're effectively giving your model information it shouldn't have during training.
 
-* Example of the Problem:
+:::
 
-    * Imagine a scenario where a word appears in the test set but not in the training set. If TF-IDF is calculated using the entire dataset (both training and test sets), the vectorizer will include this word in the vocabulary, and its TF-IDF representation will be based on its presence in the entire dataset. As a result, during the testing phase, although the model will not recognize this word nor use its TF-IDF value for classification but its presence will affect the TF-IDF vaues of other words that can affect the classification.
+:::{.cell .markdown}
 
-    * In the correct approach, where TF-IDF is computed only on the training set, this word will not be included in the vocabulary used to transform the test set the other words TF-IDF values will not depend on this word. Consequently, during testing, while the model will not have any information about this word in both cases, the prediction will be based only on the words TF-IDF values without been affected with the other words. This prevents the model from making biased predictions based on information it should not have had access to during training.
+### Examples Illustrating the Problem:
 
 :::
 
-::: {.cell .code}
+:::{.cell .markdown}
+
+1. Word Appears in Test Set but Not in Training Set:
+   * Consider a scenario where a word appears in the test set but not in the training set. If TF-IDF is calculated using the entire dataset (including both training and test sets), the vectorizer will include this word in its vocabulary, and its TF-IDF representation will be based on its presence in the entire dataset. Although the model won’t use this word's TF-IDF value for classification during testing, the word's presence can affect the TF-IDF values of other words, potentially influencing classification outcomes.
+   * In the correct approach, where TF-IDF is computed only on the training set, this word won’t be included in the vocabulary used to transform the test set. The TF-IDF values of other words remain unaffected by this word, resulting in predictions based purely on the TF-IDF values without any unintended bias from the test data. This prevents the model from making biased predictions based on information it shouldn’t have had access to during training.
+
+2. No Overlap Between Training and Testing Vocabulary:
+   * Imagine another scenario where we intentionally remove all overlapping words between the training and test sets, making their vocabularies completely distinct. One might assume that in this case, vectorizing the entire dataset (train + test) is similar to vectorizing just the training set. While the number of words in the vocabulary might be the same, the TF-IDF values for each word will differ because the IDF values depend on the total number of documents. This difference can affect classification outcomes.
+
+:::
+
+:::{.cell .markdown}
+
+To demonstrate the effect of vectorization (specifically TF-IDF), we will conduct two scenarios, each with two experiments:
+
+1. **Scenario 1: Overlapping Words Between Training and Test Sets**
+   * Experiment 1: With Data Leakage
+   * Experiment 2: Without Data Leakage
+2. **Scenario 2: No Overlapping Words Between Training and Test Sets**
+   * Experiment 1: With Data Leakage
+   * Experiment 2: Without Data Leakage
+
+:::
+
+:::{.cell .code}
 ```python
-import random
+import warnings
 import numpy as np
+import pandas as pd
+from sklearn.metrics import classification_report
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
-from nltk.corpus import brown
-import re
-
-# Function to clean the vocabulary, removing words with non-alphanumeric characters
-def clean_vocab(vocab):
-    return {word for word in vocab if re.match(r'^\w+$', word)}
-
-# Function to randomly assign coefficients to vocabulary
-def assign_random_coefficients(vocab):
-    return {word: round(random.uniform(0.01, 1.0), 4) for word in vocab}
-
-# Function to split a vocabulary into train and test with overlap
-def split_vocab_with_overlap(vocab, train_size, overlap=0.2):
-    vocab = list(vocab)
-    random.shuffle(vocab)
-
-    overlap_size = int(train_size * overlap)
-    test_size = int(train_size / 2)
-    unique_test_size = test_size - overlap_size
-
-    train_vocab = vocab[:train_size - overlap_size]
-    overlap_vocab = random.sample(train_vocab, overlap_size)
-
-    remaining_vocab = vocab[train_size - overlap_size:]
-    test_vocab = set(overlap_vocab + remaining_vocab[:unique_test_size])
-
-    train_vocab = set(train_vocab + overlap_vocab)
-
-    # Assign coefficients
-    coefficients = assign_random_coefficients(train_vocab)
-
-    # Ensure overlap words have the same coefficients in both vocabularies
-    test_vocab_with_coefficients = {word: coefficients[word] if word in coefficients else round(random.uniform(0.01, 1.0), 4) for word in test_vocab}
-
-    return coefficients, test_vocab_with_coefficients
-
-import nltk
-nltk.download('brown')
-
-# Load a vocabulary collection (example using NLTK words)
-full_vocab = set(brown.words())
-
-# Clean the vocabulary to remove words with non-alphanumeric characters
-full_vocab = clean_vocab(full_vocab)
-
-# Split the vocabulary into train and test with a 20% overlap
-train_vocab, test_vocab = split_vocab_with_overlap(full_vocab, 10, overlap=0.2)
+warnings.filterwarnings("ignore")
 ```
 :::
 
-::: {.cell .code}
+:::{.cell .markdown}
 ```python
-import random
-import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
+# These words is our corpus
+common_words = [
+    "time", "person", "year", "way", "day", "thing", "man", "world", "life",
+    "hand", "part", "child", "eye", "woman", "place", "work", "week", "case",
+    "point", "government", "company", "number", "group", "problem", "fact",
+    "be", "have", "do", "say", "get", "make", "go", "know", "take", "see",
+    "come", "think", "look", "want", "give", "use", "find", "tell", "ask",
+    "work", "seem", "feel", "try", "leave", "call", "good", "new", "first",
+    "last", "long", "great", "little", "own", "other", "old", "right",
+    "big", "high", "different", "small", "large", "next", "early", "young",
+    "few", "public", "bad", "same", "able", "to", "of", "in",
+    "for", "on", "with", "at", "by", "from", "about", "as", "into", "like",
+    "through", "after", "over", "between", "out", "against", "during",
+    "without", "before", "under", "around", "among",
+    "important"
+]
+```
+:::
 
-random.seed(60)
-def generate_sentences(vocab, num_sentences=5, sentence_length=7):
-    sentences = []
-    for _ in range(num_sentences):
-        sentence = random.choices(list(vocab.keys()), k=sentence_length)
-        sentences.append(" ".join(sentence))
-    return sentences
+:::{.cell .code}
+```python
+# Label logic: Sentences containing certain "positive" words are labeled as 1; others are labeled as 0.
+positive_words = {'good', 'great', 'important', 'large', 'first', 'like'}  # Example positive words
+def assign_labels(sentences, positive_words):
+    labels = []
+    for sentence in sentences:
+        if any(word in sentence for word in positive_words):
+            labels.append(1)
+        else:
+            labels.append(0)
+    return np.array(labels)
 
-# Generate sentences for the train and test sets
+# Generate random sentences with a length of 10 words
+def generate_sentences(vocab, n_sentences=100, sentence_length=10):
+    return [' '.join(np.random.choice(vocab, sentence_length, replace=False)) for _ in range(n_sentences)]
+
+# Analyze feature importance (TF-IDF values and model coefficients)
+def analyze_word_importance(vectorizer, model, feature_names):
+    coef = model.coef_[0]
+    tfidf_values = vectorizer.transform(test_sentences).toarray()
+    importance = {feature_names[i]: coef[i] for i in range(len(coef))}
+
+    # Sort by importance
+    importance_sorted = dict(sorted(importance.items(), key=lambda item: abs(item[1]), reverse=True))
+
+    # Show top features
+    df = pd.DataFrame(list(importance_sorted.items()), columns=['Word', 'Coefficient'])
+    #df['TF-IDF'] = tfidf_values.mean(axis=0)  # Average TF-IDF score across the test set
+
+    return df
+```
+:::
+
+:::{.cell .code}
+```python
+np.random.seed(91)
+np.random.shuffle(common_words)
+```
+:::
+
+:::{.cell .markdown}
+
+### Overlapping Words Between Training and Test Sets
+
+:::
+
+:::{.cell .code}
+```python
+train_vocab = np.array(common_words[:80])
+
+# you can adjust how much words from train set
+unique_vocab = np.random.choice(common_words[80:], 20, replace=False)
+overlap_vocab = np.random.choice(train_vocab, 20, replace=False)
+test_vocab = np.concatenate((unique_vocab, overlap_vocab))
+```
+:::
+
+:::{.cell .code}
+```python
 train_sentences = generate_sentences(train_vocab)
 test_sentences = generate_sentences(test_vocab)
-
-print("Train Sentences:")
-for sentence in train_sentences:
-    print(f"  - {sentence}")
-
-print("\nTest Sentences:")
-for sentence in test_sentences:
-    print(f"  - {sentence}")
-
-# Function to calculate and display row * coefficient calculations
-def simulate_labels(tfidf_matrix_no_leakage, vectorizer_no_leakage, tfidf_matrix_leakage, vectorizer_leakage, coefficients, sentences):
-    labels_no_leakage = []
-    labels_leakage = []
-
-    Classifier1 = np.mean(list(coefficients.values()))
-
-    for i, sentence in enumerate(sentences):
-        print(f"\nSentence {i}: {sentence}")
-
-        # No Data Leakage
-        print("\nTF-IDF without Data Leakage:")
-        row_no_leakage = tfidf_matrix_no_leakage[i].toarray().flatten()
-        score_no_leakage = 0
-        for j, word in enumerate(vectorizer_no_leakage.get_feature_names_out()):
-            if word in coefficients:
-                tfidf_value = row_no_leakage[vectorizer_no_leakage.vocabulary_.get(word)]
-                coef = coefficients[word]
-                product = tfidf_value * coef
-                score_no_leakage += product
-                print(f"{word:10}: TF-IDF = {tfidf_value:5.4f}, Coefficient = {coef:5.4f}, Product = {product:5.4f}")
-        print(f"Total Score: {score_no_leakage:5.4f}")
-        label_no_leakage = 1 if score_no_leakage > Classifier1 else 0
-        labels_no_leakage.append(label_no_leakage)
-
-        # Data Leakage
-        print("\nTF-IDF with Data Leakage:")
-        row_leakage = tfidf_matrix_leakage[i].toarray().flatten()
-        score_leakage = 0
-        for j, word in enumerate(vectorizer_leakage.get_feature_names_out()):
-            if word in coefficients:
-                tfidf_value = row_leakage[vectorizer_leakage.vocabulary_.get(word)]
-                coef = coefficients[word]
-                product = tfidf_value * coef
-                score_leakage += product
-                print(f"{word:10}: TF-IDF = {tfidf_value:5.4f}, Coefficient = {coef:5.4f}, Product = {product:5.4f}")
-        print(f"Total Score: {score_leakage:5.4f}")
-        label_leakage = 1 if score_leakage > Classifier1 else 0
-        labels_leakage.append(label_leakage)
-
-        print(f"Boundary (Median Coefficient): {Classifier1:5.4f}")
-        print("-" * 40)
-
-    return np.array(labels_no_leakage), np.array(labels_leakage)
-
-# Apply TF-IDF without Data Leakage
-vectorizer_no_leakage = TfidfVectorizer(vocabulary=train_vocab.keys(), lowercase=False)
-tfidf_train_no_leakage = vectorizer_no_leakage.fit_transform(train_sentences)
-tfidf_test_no_leakage = vectorizer_no_leakage.transform(test_sentences)
-
-# TF-IDF with Data Leakage (before splitting)
-combined_sentences = train_sentences + test_sentences
-combined_vocab = set(train_vocab.keys()).union(set(test_vocab.keys()))
-vectorizer_leakage = TfidfVectorizer(vocabulary=list(combined_vocab),lowercase=False)
-tfidf_leakage = vectorizer_leakage.fit_transform(combined_sentences)
-
-# Generate labels based on coefficients for train and test sets
-print("\nTrain Sentences Analysis:")
-train_labels_no_leakage, train_labels_leakage = simulate_labels(
-    tfidf_train_no_leakage,
-    vectorizer_no_leakage,
-    tfidf_leakage[:len(train_sentences)],
-    vectorizer_leakage,
-    train_vocab,
-    train_sentences
-)
-
-print("\nTest Sentences Analysis:")
-test_labels_no_leakage, test_labels_leakage = simulate_labels(
-    tfidf_test_no_leakage,
-    vectorizer_no_leakage,
-    tfidf_leakage[len(train_sentences):],
-    vectorizer_leakage,
-    train_vocab,
-    test_sentences
-)
-
-def compare_labels(train_labels, test_labels, train_leakage_labels, test_leakage_labels):
-    print("\nComparison of Labels without and with Data Leakage:")
-    print(f"{'Train Sentences':<20}{'Without Leakage':<20}{'With Leakage':<20}")
-    for i, (orig, leak) in enumerate(zip(train_labels, train_leakage_labels)):
-        print(f"{'Train '+str(i):<20}{orig:<20}{leak:<20}")
-
-    print("\nTest Labels:")
-    print(f"{'Test Sentences':<20}{'Without Leakage':<20}{'With Leakage':<20}")
-    for i, (orig, leak) in enumerate(zip(test_labels, test_leakage_labels)):
-        print(f"{'Test '+str(i):<20}{orig:<20}{leak:<20}")
-# Compare labels to show the impact of TF-IDF changes due to leakage
-compare_labels(train_labels_no_leakage, test_labels_no_leakage, train_labels_leakage, test_labels_leakage)
 ```
 :::
 
-::: {.cell .markdown}
-
-**Effects of Data Leakage on TF-IDF-based Classification**
-
-This illustrates the effects of data leakage on TF-IDF-based classification by generating and analyzing sentences from a split vocabulary with overlap. It first prepares the vocabulary by cleaning and assigning random coefficients, then splits the vocabulary into training and test sets with a specified overlap. Sentences are generated from these vocabularies, and TF-IDF values are computed for both scenarios: without and with data leakage. By comparing classification results, it demonstrates how leakage can influence TF-IDF values and ultimately affect model performance. This approach helps visualize the impact of data leakage on feature extraction and classification.
-
-**Example Sentence Analysis:**
-
-*Sentence 3: stag Porch lessened lessened buckshot buckshot tunes*
+:::{.cell .code}
+```python
+y_train = assign_labels(train_sentences, positive_words)
+y_test = assign_labels(test_sentences, positive_words)
 ```
-TF-IDF without Data Leakage:
-Lovejoy      : TF-IDF = 0.0000, Coefficient = 0.7488, Product = 0.0000
-stag         : TF-IDF = 0.3833, Coefficient = 0.7915, Product = 0.3034
-Desolation   : TF-IDF = 0.0000, Coefficient = 0.0246, Product = 0.0000
-arithmetical : TF-IDF = 0.0000, Coefficient = 0.6371, Product = 0.0000
-brilliance   : TF-IDF = 0.0000, Coefficient = 0.9147, Product = 0.0000
-buckshot     : TF-IDF = 0.9236, Coefficient = 0.5965, Product = 0.5509
-crags        : TF-IDF = 0.0000, Coefficient = 0.5030, Product = 0.0000
-cops         : TF-IDF = 0.0000, Coefficient = 0.4496, Product = 0.0000
-Total Score  : 0.8543
+:::
 
-TF-IDF with Data Leakage:
-Lovejoy      : TF-IDF = 0.0000, Coefficient = 0.7488, Product = 0.0000
-stag         : TF-IDF = 0.2648, Coefficient = 0.7915, Product = 0.2096
-Desolation   : TF-IDF = 0.0000, Coefficient = 0.0246, Product = 0.0000
-arithmetical : TF-IDF = 0.0000, Coefficient = 0.6371, Product = 0.0000
-brilliance   : TF-IDF = 0.0000, Coefficient = 0.9147, Product = 0.0000
-buckshot     : TF-IDF = 0.5296, Coefficient = 0.5965, Product = 0.3159
-crags        : TF-IDF = 0.0000, Coefficient = 0.5030, Product = 0.0000
-cops         : TF-IDF = 0.0000, Coefficient = 0.4496, Product = 0.0000
-Total Score  : 0.5255
-Boundary (Median Coefficient): 0.5832
+:::{.cell .code}
+```python
+# Scenario 1: Incorrect Vectorization
+vectorizer_in = TfidfVectorizer()
+X = vectorizer_in.fit_transform(train_sentences + test_sentences)
+y = np.concatenate([y_train, y_test])
+
+# Split the dataset (simulating the issue)
+X_train, X_test, y_train_split, y_test_split = train_test_split(X, y, test_size=0.5, stratify=y)
+
+model_in = LogisticRegression()
+model_in.fit(X_train, y_train_split)
+y_pred = model_in.predict(X_test)
+
+print("Incorrect Vectorization Results")
+print(classification_report(y_test_split, y_pred))
+
+# Scenario 2: Correct Vectorization
+vectorizer_cr = TfidfVectorizer()
+X_train = vectorizer_cr.fit_transform(train_sentences)
+X_test = vectorizer_cr.transform(test_sentences)
+
+model_cr = LogisticRegression()
+model_cr.fit(X_train, y_train)
+y_pred = model_cr.predict(X_test)
+
+print("Correct Vectorization Results")
+print(classification_report(y_test, y_pred))
 ```
-**Analysis:**
+:::
 
-For this sentence, we have five words: stag, Porch, lessened, buckshot, tunes. Among these, only two words (stag and buckshot) are recognized by the model (i.e., they exist in the training set). The remaining three words are not present in the training set but would be recognized by the vectorizer if we incorrectly used it on the whole train and test sets. Although these words do not directly affect classification, they influence the TF-IDF values of other words (e.g., stag and buckshot), leading to biased classification.
+:::{.cell .code}
+```python
+# Analyze the incorrect vectorization
+feature_names_incorrect = vectorizer_in.get_feature_names_out()
+importance_incorrect = analyze_word_importance(vectorizer_in, model_in, feature_names_incorrect)
+print("\nWord Importance (Incorrect Vectorization):")
+print(importance_incorrect.head(10))
 
-**Approach Comparison:**
+# Analyze the correct vectorization
+feature_names_correct = vectorizer_cr.get_feature_names_out()
+importance_correct = analyze_word_importance(vectorizer_cr, model_cr, feature_names_correct)
+print("\nWord Importance (Correct Vectorization):")
+print(importance_correct.head(10))
+```
+:::
 
-Incorrect Approach: Data Leakage
+:::{.cell .markdown}
 
-1. Fit TF-IDF on the entire dataset.
-2. Split the data.
-3. Train & evaluate the model.
+For this random seed : 
+```python
+Word Importance (Incorrect Vectorization):
+        Word  Coefficient
+0  important     1.711376
+1      first     1.317084
+2       like     1.253898
+3      large     1.037566
+4    between    -0.898636
+5         be     0.790213
+6       good     0.757860
+7     during     0.642729
+8      about    -0.638115
+9    without    -0.613821
 
-Correct Approach: No Data Leakage
+Word Importance (Correct Vectorization):
+        Word  Coefficient
+0  important     2.041620
+1      first     1.702450
+2       like     1.594894
+3      great     0.946408
+4    without    -0.739197
+5    between    -0.681667
+6      group    -0.651607
+7       seem    -0.634980
+8         in    -0.593599
+9     person     0.582079
+```
 
-1. Split the data.
-2. Fit TF-IDF on the training set.
-3. Train & evaluate the model.
+1- Incorrect Vectorization (With Data Leakage):
+  
+   In the first experiment, where TF-IDF vectorization was applied to the entire dataset before splitting, the coefficients of words show a particular pattern:
+
+  * The word "important" has a high positive coefficient (1.711376), indicating strong importance in the model's decision-making process.
+  * Other words like "first" (1.317084), "like" (1.253898), and "large" (1.037566) also have significant positive coefficients, contributing heavily to the model's predictions.
+  * Negative coefficients, such as for "between" (-0.898636) and "about" (-0.638115), suggest that these words negatively influence the model's predictions.
+
+
+2- Correct Vectorization (Without Data Leakage):
+   
+   In the second experiment, where TF-IDF was correctly applied only to the training set, the coefficients differ:
+
+  * The importance of the word "important" increases significantly (2.041620), suggesting that without leakage, the model identifies this word as even more influential.
+  * The word "first" also shows increased importance (1.702450) compared to the scenario with leakage.
+  * New words like "great" (0.946408) and "person" (0.582079) appear in the top 10, which were not present in the incorrect vectorization output.
+  * Negative coefficients, like for "without" (-0.739197) and "between" (-0.681667), are still present but with slightly different magnitudes.
+  * In this specific case, the accuracy of the correct vectorization approach scores higher than the approach with data leakage (even though it's considered data leakage, it does not always introduce overoptimism).
+
+:::
+
+:::{.cell .markdown}
+
+### No Overlapping Words Between Training and Test Sets
+:::
+
+:::{.cell .code}
+```python
+train_vocab = np.array(common_words[:80])
+
+# you can adjust how much words from train set
+unique_vocab = np.random.choice(common_words[80:], 20, replace=False)
+overlap_vocab = np.random.choice(train_vocab, 0, replace=False)  # No Overlap
+test_vocab = np.concatenate((unique_vocab, overlap_vocab))
+```
+:::
+
+:::{.cell .code}
+```python
+train_sentences = generate_sentences(train_vocab)
+test_sentences = generate_sentences(test_vocab)
+```
+:::
+
+:::{.cell .code}
+```python
+y_train = assign_labels(train_sentences, positive_words)
+y_test = assign_labels(test_sentences, positive_words)
+```
+:::
+
+:::{.cell .code}
+```python
+# Scenario 1: Incorrect Vectorization
+vectorizer_in = TfidfVectorizer()
+X = vectorizer_in.fit_transform(train_sentences + test_sentences)
+y = np.concatenate([y_train, y_test])
+
+# Split the dataset (simulating the issue)
+X_train, X_test, y_train_split, y_test_split = train_test_split(X, y, test_size=0.5, stratify=y)
+
+model_in = LogisticRegression()
+model_in.fit(X_train, y_train_split)
+y_pred = model_in.predict(X_test)
+
+print("Incorrect Vectorization Results")
+print(classification_report(y_test_split, y_pred))
+
+# Scenario 2: Correct Vectorization
+vectorizer_cr = TfidfVectorizer()
+X_train = vectorizer_cr.fit_transform(train_sentences)
+X_test = vectorizer_cr.transform(test_sentences)
+
+model_cr = LogisticRegression()
+model_cr.fit(X_train, y_train)
+y_pred = model_cr.predict(X_test)
+
+print("Correct Vectorization Results")
+print(classification_report(y_test, y_pred))
+```
+:::
+
+:::{.cell .code}
+```python
+# Analyze the incorrect vectorization
+feature_names_incorrect = vectorizer_in.get_feature_names_out()
+importance_incorrect = analyze_word_importance(vectorizer_in, model_in, feature_names_incorrect)
+print("\nWord Importance (Incorrect Vectorization):")
+print(importance_incorrect.head(10))
+
+# Analyze the correct vectorization
+feature_names_correct = vectorizer_cr.get_feature_names_out()
+importance_correct = analyze_word_importance(vectorizer_cr, model_cr, feature_names_correct)
+print("\nWord Importance (Correct Vectorization):")
+print(importance_correct.head(10))
+```
+:::
+
+:::{.cell .markdown}
+
+Although we expected that removing overlapping words from the test set would reduce data leakage, it turns out that the incorrect vectorization approach still negatively impacts classification performance.
+
+For some random seed : 
+```python
+Word Importance (Incorrect Vectorization):
+        Word  Coefficient
+0      large     1.095835
+1       good     1.022922
+2       like     0.984725
+3      great     0.982889
+4  important     0.896704
+5       know    -0.690697
+6        ask    -0.677369
+7       part    -0.668816
+8      group    -0.662566
+9      other    -0.626573
+
+Word Importance (Correct Vectorization):
+        Word  Coefficient
+0  important     1.578938
+1      great     1.437431
+2       good     1.376976
+3       like     1.343495
+4      large     1.190552
+5       know    -0.794442
+6       fact    -0.732356
+7    against     0.598915
+8         on    -0.594957
+9      first     0.582358
+
+```
 :::

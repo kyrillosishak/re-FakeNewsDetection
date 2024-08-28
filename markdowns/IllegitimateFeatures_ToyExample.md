@@ -18,7 +18,7 @@ One specific form of data leakage involves selecting features that directly infl
 
 :::{.cell .markdown}
 
-<img src="https://github.com/kyrillosishak/re-FakeNewsDetection/raw/main/Assets/features.png" height=130>
+<img src="https://github.com/kyrillosishak/re-FakeNewsDetection/raw/main/assets/features.png" height=130>
 
 If the feature `took_antibiotic_medicine` is updated based on whether a patient had pneumonia `got_pneumonia`, it creates target leakage. This is because the model learns that if took_antibiotic_medicine is False, the patient didn't have pneumonia. During validation, this pattern repeats, leading to misleadingly high performance. However, in real-world scenarios, predictions are made before knowing if a patient has received antibiotics, leading to poor model accuracy. To avoid this, exclude features updated or created after the target variable is known.
 
@@ -58,7 +58,7 @@ Since share is derived from expenditure, it should also be excluded to prevent l
 
 :::{.cell .code}
 ```python
-!wget -q https://github.com/kyrillosishak/re-FakeNewsDetection/raw/main/Data/CreditCardDatafrombook%22EconometricAnalysis%22.zip
+!wget -q https://github.com/kyrillosishak/re-FakeNewsDetection/raw/main/data/CreditCardDatafrombook%22EconometricAnalysis%22.zip
 !unzip -q "/content/CreditCardDatafrombook\"EconometricAnalysis\".zip"
 ```
 :::
