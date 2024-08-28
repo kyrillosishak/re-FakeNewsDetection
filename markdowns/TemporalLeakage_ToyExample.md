@@ -5,7 +5,7 @@
 
 Time series data is a collection of data points arranged in chronological order. This type of data is common across various fields, such as finance, where stock prices fluctuate over time, and weather forecasting, where temperature readings are recorded in sequence.
 
-<img src="https://github.com/kyrillosishak/re-FakeNewsDetection/raw/main/Assets/TimeSeries_DataLeaked.png" height = 300>
+<img src="https://github.com/kyrillosishak/re-FakeNewsDetection/raw/main/assets/TimeSeries_DataLeaked.png" height = 300>
 
 Imagine you have 1,000 samples of Microsoft’s (MSFT) stock price throughout a single day. You might be tempted to randomly select 500 samples for your training set and reserve the rest for validation. However, this approach can make your model appear astonishingly accurate, as though it possesses an uncanny ability to predict Microsoft’s future stock prices. The reason? Your model has inadvertently seen the future—the training set includes data from both before and after nearly every point in the validation set. From the perspective of the validation data, information from the future has leaked into your model, undermining the integrity of your evaluation.
 
