@@ -411,7 +411,7 @@ print(importance_correct.head(10))
 
 :::{.cell .markdown}
 
-Although we expected that removing overlapping words from the test set would reduce data leakage, it turns out that the incorrect vectorization approach still negatively impacts classification performance.
+Although we expected that removing overlapping words from the test set would reduce data leakage, it turns out that the incorrect vectorization approach still impacts classification performance.
 
 For some random seed : 
 ```python
