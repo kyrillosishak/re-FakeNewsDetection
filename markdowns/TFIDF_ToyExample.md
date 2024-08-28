@@ -76,7 +76,7 @@ TF-IDF stands for **Term Frequency-Inverse Document Frequency**. It is a numeric
 
 ::: {.cell .markdown}
 
-Data leakage refers to the situation where information from outside the training dataset is used to create the model. This leads to overly optimistic performance estimates and poor generalization to new data.
+Data leakage refers to the situation where information from outside the training dataset is used to create the model. This leads to wrong performance estimates and poor generalization to new data.
 
 This can happen when TF-IDF is computed on the entire dataset before splitting it into training and testing sets
 
@@ -142,7 +142,7 @@ warnings.filterwarnings("ignore")
 
 :::{.cell .markdown}
 ```python
-# These words is our corpus
+# This is our corpus
 common_words = [
     "time", "person", "year", "way", "day", "thing", "man", "world", "life",
     "hand", "part", "child", "eye", "woman", "place", "work", "week", "case",
