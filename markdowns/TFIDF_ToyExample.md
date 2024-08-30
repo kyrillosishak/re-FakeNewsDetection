@@ -311,7 +311,7 @@ Word Importance (Correct Vectorization):
 9     person     0.582079
 ```
 
-1- Incorrect Vectorization (With Data Leakage):
+1. Incorrect Vectorization (With Data Leakage):
   
    In the first experiment, where TF-IDF vectorization was applied to the entire dataset before splitting, the coefficients of words show a particular pattern:
 
@@ -320,7 +320,7 @@ Word Importance (Correct Vectorization):
   * Negative coefficients, such as for "between" (-0.898636) and "about" (-0.638115), suggest that these words negatively influence the model's predictions.
 
 
-2- Correct Vectorization (Without Data Leakage):
+2. Correct Vectorization (Without Data Leakage):
    
    In the second experiment, where TF-IDF was correctly applied only to the training set, the coefficients differ:
 
