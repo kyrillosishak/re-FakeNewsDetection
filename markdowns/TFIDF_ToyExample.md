@@ -140,7 +140,7 @@ In this 2 example, we explore the effect of data leakage on the TF-IDF feature e
 
 :::
 
-:::{.cell .markdown}
+:::{.cell .code}
 ```python
 # Function to print TF-IDF scores for a specific word
 def print_tfidf_scores(word, vectorizer, train_tfidf, test_tfidf):
